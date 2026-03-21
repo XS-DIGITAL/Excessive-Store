@@ -20,6 +20,7 @@ import { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './firebase';
+import { Instagram, Twitter, Youtube, Facebook } from 'lucide-react';
 
 function Footer() {
   const [siteName, setSiteName] = useState('EXCESSIVE STORE');
@@ -77,10 +78,21 @@ function Footer() {
           <div>
             <h4 className="font-bold mb-6 uppercase tracking-widest text-xs">Follow Us</h4>
             <div className="flex gap-4">
-              {['Instagram', 'Twitter', 'TikTok'].map(platform => (
-                <a key={platform} href="#" className="w-10 h-10 bg-surface rounded-xl flex items-center justify-center hover:bg-brand-orange hover:text-black transition-all">
-                  <span className="sr-only">{platform}</span>
-                  <div className="w-5 h-5 bg-current opacity-20" />
+              {[
+                { name: 'Instagram', icon: Instagram, href: '#' },
+                { name: 'Twitter', icon: Twitter, href: '#' },
+                { name: 'Youtube', icon: Youtube, href: '#' },
+                { name: 'Facebook', icon: Facebook, href: '#' }
+              ].map(platform => (
+                <a 
+                  key={platform.name} 
+                  href={platform.href} 
+                  className="w-10 h-10 bg-surface rounded-xl flex items-center justify-center hover:bg-brand-orange hover:text-black transition-all group"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="sr-only">{platform.name}</span>
+                  <platform.icon size={20} className="group-hover:scale-110 transition-transform" />
                 </a>
               ))}
             </div>
