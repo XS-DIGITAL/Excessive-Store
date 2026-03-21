@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: settings
+    // Document ID: global
+    // Fields:
+    //   - siteName: string (required) - The name of the store.
+    //   - updatedAt: timestamp (optional) - Last update time.
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "admin@admin.com" && 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['siteName']) &&
+             data.siteName is string && 
+             data.siteName.size() > 0 && 
+             data.siteName.size() < 100;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['title']) &&
+             data.title is string && 
+             data.title.size() > 0;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['items', 'total', 'currency', 'shipping', 'status', 'orderNumber']) &&
+             data.items is list &&
+             data.total is number &&
+             data.currency is string &&
+             data.shipping is map &&
+             data.status is string &&
+             data.orderNumber is string;
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/theme {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /products/{handle} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
