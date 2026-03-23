@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
 
 type Theme = 'light' | 'dark';
 
@@ -28,10 +26,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('lookoutpost_theme');
+    const saved = localStorage.getItem('excessive_store_theme_mode');
     return (saved as Theme) || 'dark';
   });
-  const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
+  const [settings, setSettings] = useState<ThemeSettings>(() => {
+    const saved = localStorage.getItem('excessive_store_theme');
+    return saved ? JSON.parse(saved) : defaultSettings;
+  });
 
   useEffect(() => {
     // Apply initial defaults
@@ -41,29 +42,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--brand-orange', settings.accentColor);
     root.style.setProperty('--font-sans', settings.fontFamily + ', ui-sans-serif, system-ui, sans-serif');
 
-    const unsub = onSnapshot(doc(db, 'settings', 'theme'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const newSettings = {
-          primaryColor: data.primaryColor || defaultSettings.primaryColor,
-          secondaryColor: data.secondaryColor || defaultSettings.secondaryColor,
-          accentColor: data.accentColor || defaultSettings.accentColor,
-          fontFamily: data.fontFamily || defaultSettings.fontFamily
-        };
+    // Listen for theme updates (from Admin panel)
+    const handleThemeUpdate = () => {
+      const saved = localStorage.getItem('excessive_store_theme');
+      if (saved) {
+        const newSettings = JSON.parse(saved);
         setSettings(newSettings);
-        
-        // Apply to CSS variables
         root.style.setProperty('--brand-green', newSettings.primaryColor);
         root.style.setProperty('--brand-green-dark', newSettings.secondaryColor);
         root.style.setProperty('--brand-orange', newSettings.accentColor);
         root.style.setProperty('--font-sans', newSettings.fontFamily + ', ui-sans-serif, system-ui, sans-serif');
       }
+    };
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'excessive_store_theme') handleThemeUpdate();
     });
-    return () => unsub();
-  }, []);
+    
+    return () => window.removeEventListener('storage', handleThemeUpdate);
+  }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem('lookoutpost_theme', theme);
+    localStorage.setItem('excessive_store_theme_mode', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');

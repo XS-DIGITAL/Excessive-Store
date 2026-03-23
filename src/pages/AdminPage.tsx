@@ -1,20 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  onSnapshot, 
-  collection, 
-  getDocs, 
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  updateDoc
-} from 'firebase/firestore';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { 
   Settings, 
   Palette, 
@@ -48,8 +32,7 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  LineChart, 
-  Line,
+  BarChart as ReBarChart,
   AreaChart,
   Area
 } from 'recharts';
@@ -63,6 +46,15 @@ interface ThemeSettings {
   accentColor: string;
   fontFamily: string;
 }
+
+// Mock Data Storage Keys
+const STORAGE_KEYS = {
+  AUTH: 'excessive_store_admin_auth',
+  SETTINGS: 'excessive_store_settings',
+  THEME: 'excessive_store_theme',
+  PRODUCTS: 'excessive_store_products',
+  ORDERS: 'excessive_store_orders'
+};
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
@@ -93,82 +85,59 @@ export default function AdminPage() {
   const [viewingOrder, setViewingOrder] = useState<any>(null);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    // Check local storage for auth
+    const savedAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
+    if (savedAuth) {
+      setUser(JSON.parse(savedAuth));
+    }
 
-    return () => unsub();
+    // Load other data from local storage
+    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (savedSettings) setSiteName(JSON.parse(savedSettings).siteName);
+
+    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+    if (savedTheme) setThemeSettings(JSON.parse(savedTheme));
+
+    const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    if (savedProducts) setLocalProducts(JSON.parse(savedProducts));
+
+    const savedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
+    if (savedOrders) setOrders(JSON.parse(savedOrders));
+
+    setLoading(false);
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Listen to Global Settings
-    const unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSiteName(docSnap.data().siteName);
-      }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'settings/global');
-    });
-
-    // Listen to Theme Settings
-    const unsubTheme = onSnapshot(doc(db, 'settings', 'theme'), (docSnap) => {
-      if (docSnap.exists()) {
-        setThemeSettings(prev => ({ ...prev, ...docSnap.data() }));
-      }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'settings/theme');
-    });
-
-    // Listen to Products
-    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
-      const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setLocalProducts(products);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'products');
-    });
-
-    // Listen to Orders
-    const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOrders(ordersData);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'orders');
-    });
-
-    return () => {
-      unsubSettings();
-      unsubTheme();
-      unsubProducts();
-      unsubOrders();
-    };
-  }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
     setError(null);
-    try {
-      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-    } catch (err: any) {
+    
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    if (loginEmail === 'admin@admin.com' && loginPassword === 'password123') {
+      const adminUser = { email: loginEmail, role: 'admin', uid: 'admin-1' };
+      setUser(adminUser);
+      localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(adminUser));
+    } else {
       setError('Invalid credentials. Please try again.');
-    } finally {
-      setLoginLoading(false);
     }
+    setLoginLoading(false);
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
+    localStorage.removeItem(STORAGE_KEYS.AUTH);
   };
 
   const handleSaveSettings = async () => {
     setSaving(true);
-    const path = 'settings/global';
     try {
-      await setDoc(doc(db, 'settings', 'global'), {
-        siteName,
-        updatedAt: new Date().toISOString()
-      });
+      const data = { siteName, updatedAt: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
+      // Dispatch event for Navbar to update
+      window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path);
       setError('Failed to save settings');
     } finally {
       setSaving(false);
@@ -177,14 +146,9 @@ export default function AdminPage() {
 
   const handleSaveTheme = async () => {
     setSaving(true);
-    const path = 'settings/theme';
     try {
-      await setDoc(doc(db, 'settings', 'theme'), {
-        ...themeSettings,
-        updatedAt: new Date().toISOString()
-      });
+      localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(themeSettings));
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path);
       setError('Failed to save theme');
     } finally {
       setSaving(false);
@@ -196,18 +160,12 @@ export default function AdminPage() {
     setError(null);
     try {
       const shopifyProducts = await getProducts();
-      for (const product of shopifyProducts) {
-        const path = `products/${product.handle}`;
-        try {
-          const productRef = doc(db, 'products', product.handle);
-          await setDoc(productRef, {
-            ...product,
-            syncedAt: new Date().toISOString()
-          }, { merge: true });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, path);
-        }
-      }
+      const syncedProducts = shopifyProducts.map((p: any) => ({
+        ...p,
+        syncedAt: new Date().toISOString()
+      }));
+      setLocalProducts(syncedProducts);
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(syncedProducts));
     } catch (err) {
       setError('Failed to sync products from Shopify');
     } finally {
@@ -216,40 +174,31 @@ export default function AdminPage() {
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
-    const path = `orders/${orderId}`;
-    try {
-      await updateDoc(doc(db, 'orders', orderId), { status });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, path);
-      setError('Failed to update order status');
-    }
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status } : o);
+    setOrders(updatedOrders);
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(updatedOrders));
   };
 
   const handleDeleteOrder = async (orderId: string) => {
     if (!window.confirm('Are you sure you want to delete this order?')) return;
-    const path = `orders/${orderId}`;
-    try {
-      await deleteDoc(doc(db, 'orders', orderId));
-      setViewingOrder(null);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path);
-      setError('Failed to delete order');
-    }
+    const updatedOrders = orders.filter(o => o.id !== orderId);
+    setOrders(updatedOrders);
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(updatedOrders));
+    setViewingOrder(null);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
     setSaving(true);
-    const path = `products/${editingProduct.id}`;
     try {
-      await setDoc(doc(db, 'products', editingProduct.id), {
-        ...editingProduct,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const updatedProducts = localProducts.map(p => 
+        p.id === editingProduct.id ? { ...editingProduct, updatedAt: new Date().toISOString() } : p
+      );
+      setLocalProducts(updatedProducts);
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
       setEditingProduct(null);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path);
       setError('Failed to save product');
     } finally {
       setSaving(false);
@@ -258,13 +207,9 @@ export default function AdminPage() {
 
   const handleDeleteProduct = async (productId: string) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
-    const path = `products/${productId}`;
-    try {
-      await deleteDoc(doc(db, 'products', productId));
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path);
-      setError('Failed to delete product');
-    }
+    const updatedProducts = localProducts.filter(p => p.id !== productId);
+    setLocalProducts(updatedProducts);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
   };
 
   // Analytics Data
@@ -385,7 +330,7 @@ export default function AdminPage() {
               ))}
               <div className="pt-4 mt-4 border-t border-white/5">
                 <button 
-                  onClick={() => auth.signOut()}
+                  onClick={handleSignOut}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-all"
                 >
                   <LogOut size={20} />

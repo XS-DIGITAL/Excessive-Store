@@ -1,0 +1,21 @@
+<?php
+require_once 'config.php';
+requireAdmin();
+
+$action = $_GET['action'] ?? 'get';
+
+if ($action === 'get') {
+    $settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch();
+    echo json_encode($settings);
+} elseif ($action === 'save') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $siteName = $data['siteName'];
+    $primaryColor = $data['primaryColor'];
+    $secondaryColor = $data['secondaryColor'];
+    $accentColor = $data['accentColor'];
+    
+    $stmt = $pdo->prepare("UPDATE settings SET site_name = ?, primary_color = ?, secondary_color = ?, accent_color = ?, updated_at = NOW()");
+    $stmt->execute([$siteName, $primaryColor, $secondaryColor, $accentColor]);
+    echo json_encode(['success' => true]);
+}
+?>

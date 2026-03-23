@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export interface CartItem {
   id: string;
@@ -32,7 +30,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('lookoutpost_cart');
+    const savedCart = localStorage.getItem('excessive_store_cart');
     return savedCart ? JSON.parse(savedCart) : [];
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -40,7 +38,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('lookoutpost_cart', JSON.stringify(cart));
+    localStorage.setItem('excessive_store_cart', JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (newItem: Omit<CartItem, 'quantity'>) => {
@@ -80,23 +78,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (cart.length === 0) throw new Error('Cart is empty');
     setIsCheckingOut(true);
     setError(null);
-    const path = 'orders';
+    
     try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const orderNumber = `ES-${Math.floor(100000 + Math.random() * 900000)}`;
+      const orderId = `order-${Date.now()}`;
+      
       const orderData = {
+        id: orderId,
         items: cart,
         total: totalPrice,
         currency: cart[0]?.currencyCode || 'USD',
         shipping: shippingDetails,
         status: 'pending',
-        createdAt: serverTimestamp(),
-        orderNumber: `ES-${Math.floor(100000 + Math.random() * 900000)}`
+        createdAt: new Date().toISOString(),
+        orderNumber
       };
 
-      const docRef = await addDoc(collection(db, 'orders'), orderData);
+      // Save to local storage for Admin panel
+      const existingOrders = JSON.parse(localStorage.getItem('excessive_store_orders') || '[]');
+      localStorage.setItem('excessive_store_orders', JSON.stringify([orderData, ...existingOrders]));
+
       clearCart();
-      return docRef.id;
+      return orderId;
     } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, path);
       setError('Failed to complete order. Please try again.');
       throw err;
     } finally {

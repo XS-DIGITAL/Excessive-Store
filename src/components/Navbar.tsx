@@ -4,8 +4,6 @@ import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { searchProducts } from '../lib/shopify';
 import { formatPrice } from '../lib/utils';
 
@@ -21,12 +19,21 @@ export default function Navbar() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSiteName(docSnap.data().siteName);
+    // Load site name from local storage
+    const savedSettings = localStorage.getItem('excessive_store_settings');
+    if (savedSettings) {
+      setSiteName(JSON.parse(savedSettings).siteName);
+    }
+
+    // Listen for settings updates
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail?.siteName) {
+        setSiteName(e.detail.siteName);
       }
-    });
-    return () => unsub();
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdate);
   }, []);
 
   useEffect(() => {

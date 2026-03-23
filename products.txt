@@ -1,0 +1,33 @@
+<?php
+require_once 'config.php';
+requireAdmin();
+
+$action = $_GET['action'] ?? 'list';
+
+if ($action === 'list') {
+    $products = $pdo->query("SELECT * FROM products ORDER BY created_at DESC")->fetchAll();
+    echo json_encode($products);
+} elseif ($action === 'save') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $productId = $data['id'] ?? null;
+    $title = $data['title'];
+    $price = $data['price'];
+    $description = $data['description'];
+    $image = $data['image'];
+    $handle = $data['handle'];
+    
+    if ($productId) {
+        $stmt = $pdo->prepare("UPDATE products SET title = ?, price = ?, description = ?, image = ?, handle = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->execute([$title, $price, $description, $image, $handle, $productId]);
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO products (title, price, description, image, handle, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+        $stmt->execute([$title, $price, $description, $image, $handle]);
+    }
+    echo json_encode(['success' => true]);
+} elseif ($action === 'delete') {
+    $productId = $_GET['id'];
+    $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+    $stmt->execute([$productId]);
+    echo json_encode(['success' => true]);
+}
+?>

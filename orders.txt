@@ -1,0 +1,24 @@
+<?php
+require_once 'config.php';
+requireAdmin();
+
+$action = $_GET['action'] ?? 'list';
+
+if ($action === 'list') {
+    $orders = $pdo->query("SELECT * FROM orders ORDER BY created_at DESC")->fetchAll();
+    echo json_encode($orders);
+} elseif ($action === 'update_status') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $orderId = $data['orderId'];
+    $status = $data['status'];
+    
+    $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $orderId]);
+    echo json_encode(['success' => true]);
+} elseif ($action === 'delete') {
+    $orderId = $_GET['id'];
+    $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
+    $stmt->execute([$orderId]);
+    echo json_encode(['success' => true]);
+}
+?>

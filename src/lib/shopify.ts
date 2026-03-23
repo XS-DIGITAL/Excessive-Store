@@ -1,6 +1,3 @@
-import { db } from '../firebase';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-
 const domain = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || 'mock-store.myshopify.com';
 const storefrontAccessToken = import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN || 'mock-token';
 
@@ -40,16 +37,6 @@ async function shopifyFetch({ query, variables = {} }: { query: string; variable
 }
 
 export async function getProducts() {
-  // Try to get from Firestore first
-  try {
-    const querySnapshot = await getDocs(collection(db, 'products'));
-    if (!querySnapshot.empty) {
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-  } catch (e) {
-    console.warn('Firestore products fetch failed, falling back to Shopify', e);
-  }
-
   const query = `
     query getProducts {
       products(first: 12) {
@@ -91,17 +78,6 @@ export async function getProducts() {
 }
 
 export async function getProduct(handle: string) {
-  // Try Firestore first
-  try {
-    const docRef = doc(db, 'products', handle);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
-    }
-  } catch (e) {
-    console.warn('Firestore product fetch failed', e);
-  }
-
   const query = `
     query getProduct($handle: String!) {
       product(handle: $handle) {
@@ -139,20 +115,6 @@ export async function getProduct(handle: string) {
 }
 
 export async function searchProducts(searchTerm: string) {
-  // Try to search in Firestore first (simple title match)
-  try {
-    const querySnapshot = await getDocs(collection(db, 'products'));
-    if (!querySnapshot.empty) {
-      const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      return allProducts.filter((p: any) => 
-        p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-  } catch (e) {
-    console.warn('Firestore search failed', e);
-  }
-
   const query = `
     query searchProducts($searchTerm: String!) {
       products(first: 10, query: $searchTerm) {

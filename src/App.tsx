@@ -17,23 +17,27 @@ import CollectionDetailPage from './pages/CollectionDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
-import { db } from './firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from './firebase';
 import { Instagram, Twitter, Youtube, Facebook } from 'lucide-react';
 
 function Footer() {
   const [siteName, setSiteName] = useState('EXCESSIVE STORE');
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSiteName(docSnap.data().siteName);
+    // Load site name from local storage
+    const savedSettings = localStorage.getItem('excessive_store_settings');
+    if (savedSettings) {
+      setSiteName(JSON.parse(savedSettings).siteName);
+    }
+
+    // Listen for settings updates
+    const handleSettingsUpdate = (e: any) => {
+      if (e.detail?.siteName) {
+        setSiteName(e.detail.siteName);
       }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'settings/global');
-    });
-    return () => unsub();
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdate);
   }, []);
 
   return (
