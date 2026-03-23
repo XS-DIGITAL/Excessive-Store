@@ -307,7 +307,7 @@ export default function AdminPage() {
               <p className="text-xs font-bold uppercase text-brand-orange">Demo Credentials</p>
               <div className="flex justify-between text-sm">
                 <span className="text-text-secondary">Email:</span>
-                <span className="font-mono font-bold">admin@lookoutpost.com</span>
+                <span className="font-mono font-bold">admin@admin.com</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-text-secondary">Password:</span>
