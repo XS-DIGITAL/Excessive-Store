@@ -138,6 +138,53 @@ export async function getProduct(handle: string) {
   return response.body?.data?.product;
 }
 
+export async function searchProducts(searchTerm: string) {
+  // Try to search in Firestore first (simple title match)
+  try {
+    const querySnapshot = await getDocs(collection(db, 'products'));
+    if (!querySnapshot.empty) {
+      const allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return allProducts.filter((p: any) => 
+        p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+  } catch (e) {
+    console.warn('Firestore search failed', e);
+  }
+
+  const query = `
+    query searchProducts($searchTerm: String!) {
+      products(first: 10, query: $searchTerm) {
+        edges {
+          node {
+            id
+            title
+            handle
+            images(first: 1) {
+              edges {
+                node {
+                  url
+                  altText
+                }
+              }
+            }
+            priceRange {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const response = await shopifyFetch({ query, variables: { searchTerm } });
+  return response.body?.data?.products?.edges.map((edge: any) => edge.node) || [];
+}
+
 export async function getCollections() {
   const query = `
     query getCollections {
@@ -248,6 +295,24 @@ export async function createCheckout(lineItems: { variantId: string; quantity: n
 
 // Mock Data for when API keys are missing
 function getMockData(query: string, variables: any) {
+  if (query.includes('searchProducts')) {
+    const allProducts = getMockData('query getProducts', variables).body.data.products.edges;
+    const searchTerm = variables.searchTerm?.toLowerCase() || '';
+    const filtered = allProducts.filter((edge: any) => 
+      edge.node.title.toLowerCase().includes(searchTerm) ||
+      edge.node.description.toLowerCase().includes(searchTerm)
+    );
+    return {
+      body: {
+        data: {
+          products: {
+            edges: filtered
+          }
+        }
+      }
+    };
+  }
+
   if (query.includes('getCollections')) {
     return {
       body: {

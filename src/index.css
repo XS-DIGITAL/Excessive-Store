@@ -5,19 +5,29 @@
   --brand-green-dark:#4a0066;     /* hover / active */
   --brand-green-light:#a855f7;    /* subtle highlights */
 
-  --bg-dark:         #0f172a;     /* main background */
-  --surface:         #1e293b;     /* cards */
-  --surface-hover:   #334155;
+  --bg-dark:         #000000;     /* absolute black */
+  --surface:         #0a0a0a;     /* very dark surface */
+  --surface-hover:   #111111;
 
-  --text-primary:    #f1f5f9;
-  --text-secondary:  #94a3b8;
-  --text-muted:      #64748b;
+  --text-primary:    #ffffff;
+  --text-secondary:  #a1a1aa;
+  --text-muted:      #52525b;
 
   --accent-orange:   #f5a8ff;     /* accent action pink */
   --accent-blue:     #60a5fa;     /* links, subtle accents */
   
   --brand-orange: var(--accent-orange);
-  --border-color: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+.light {
+  --bg-dark:         #f8fafc;     /* main background light */
+  --surface:         #ffffff;     /* cards light */
+  --surface-hover:   #f1f5f9;
+  --text-primary:    #0f172a;
+  --text-secondary:  #475569;
+  --text-muted:      #94a3b8;
+  --border-color:    rgba(0, 0, 0, 0.05);
 }
 
 @theme {

@@ -66,7 +66,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('lookoutpost_theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
     } else {
+      document.documentElement.classList.add('light');
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);

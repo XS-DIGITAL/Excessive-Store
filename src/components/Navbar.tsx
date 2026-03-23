@@ -1,17 +1,24 @@
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Search, Menu, X, Sun, Moon, Shield } from 'lucide-react';
+import { ShoppingBag, Search, Menu, X, Sun, Moon, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { searchProducts } from '../lib/shopify';
+import { formatPrice } from '../lib/utils';
 
 export default function Navbar() {
   const { totalItems, setIsCartOpen } = useCart();
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [siteName, setSiteName] = useState('LOOKOUTPOST');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [siteName, setSiteName] = useState('EXCESSIVE STORE');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
@@ -21,6 +28,32 @@ export default function Navbar() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.length > 2) {
+        setIsSearching(true);
+        try {
+          const results = await searchProducts(searchQuery);
+          setSearchResults(results);
+        } catch (error) {
+          console.error('Search error:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   return (
     <nav className="sticky top-0 z-50 bg-bg-dark/80 backdrop-blur-lg border-b border-border-color">
@@ -40,9 +73,6 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-8">
             <Link to="/shop" className="text-text-secondary hover:text-brand-orange transition-colors font-medium">Shop All</Link>
             <Link to="/collections" className="text-text-secondary hover:text-brand-orange transition-colors font-medium">Collections</Link>
-            <Link to="/admin" className="text-text-secondary hover:text-brand-orange transition-colors font-medium flex items-center gap-1">
-              <Shield size={14} /> Admin
-            </Link>
           </div>
 
           {/* Actions */}
@@ -54,7 +84,11 @@ export default function Navbar() {
             >
               {theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
             </button>
-            <button className="p-2 text-text-secondary hover:text-brand-orange transition-colors">
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="p-2 text-text-secondary hover:text-brand-orange transition-colors"
+              title="Search"
+            >
               <Search size={22} />
             </button>
             <button 
@@ -88,9 +122,89 @@ export default function Navbar() {
             className="md:hidden bg-surface border-b border-border-color overflow-hidden"
           >
             <div className="px-4 py-6 space-y-4">
-              <Link to="/" className="block text-lg font-medium text-text-primary" onClick={() => setIsMobileMenuOpen(false)}>Shop All</Link>
-              <Link to="/" className="block text-lg font-medium text-text-primary" onClick={() => setIsMobileMenuOpen(false)}>Collections</Link>
-              <Link to="/admin" className="block text-lg font-medium text-text-primary" onClick={() => setIsMobileMenuOpen(false)}>Admin</Link>
+              <Link to="/shop" className="block text-lg font-medium text-text-primary" onClick={() => setIsMobileMenuOpen(false)}>Shop All</Link>
+              <Link to="/collections" className="block text-lg font-medium text-text-primary" onClick={() => setIsMobileMenuOpen(false)}>Collections</Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-bg-dark/95 backdrop-blur-xl flex flex-col"
+          >
+            <div className="max-w-4xl mx-auto w-full px-4 pt-20">
+              <div className="flex justify-between items-center mb-12">
+                <h2 className="text-4xl font-display font-black tracking-tighter uppercase">Search</h2>
+                <button 
+                  onClick={() => setIsSearchOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X size={32} />
+                </button>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" size={24} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="What are you looking for?"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-surface border-2 border-border-color rounded-2xl py-6 pl-16 pr-6 text-xl focus:border-brand-orange outline-none transition-all"
+                />
+                {isSearching && (
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                    <Loader2 className="animate-spin text-brand-orange" size={24} />
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-12 overflow-y-auto max-h-[60vh] pr-4 custom-scrollbar">
+                {searchResults.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {searchResults.map((product) => (
+                      <Link
+                        key={product.id}
+                        to={`/product/${product.handle}`}
+                        onClick={() => setIsSearchOpen(false)}
+                        className="flex gap-4 p-4 bg-surface/50 hover:bg-surface border border-border-color rounded-xl transition-all group"
+                      >
+                        <div className="w-20 h-20 bg-bg-dark rounded-lg overflow-hidden shrink-0">
+                          <img 
+                            src={product.images?.edges?.[0]?.node?.url || product.image} 
+                            alt={product.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <div className="flex flex-col justify-center">
+                          <h3 className="font-bold group-hover:text-brand-orange transition-colors">{product.title}</h3>
+                          <p className="text-brand-orange font-mono text-sm mt-1">
+                            {formatPrice(
+                              product.priceRange?.minVariantPrice?.amount || product.price, 
+                              product.priceRange?.minVariantPrice?.currencyCode || product.currencyCode || 'USD'
+                            )}
+                          </p>
+                        </div>
+                        <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight size={20} className="text-brand-orange" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : searchQuery.length > 2 && !isSearching ? (
+                  <div className="text-center py-20">
+                    <p className="text-text-secondary text-lg">No products found for "{searchQuery}"</p>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </motion.div>
         )}
