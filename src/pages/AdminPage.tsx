@@ -71,6 +71,8 @@ export default function AdminPage() {
 
   // Settings State
   const [siteName, setSiteName] = useState('EXCESSIVE STORE');
+  const [shopifyDomain, setShopifyDomain] = useState('');
+  const [shopifyAccessToken, setShopifyAccessToken] = useState('');
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>({
     primaryColor: '#6c0094',
     secondaryColor: '#4a0066',
@@ -104,6 +106,18 @@ export default function AdminPage() {
     const savedOrders = localStorage.getItem(STORAGE_KEYS.ORDERS);
     if (savedOrders) setOrders(JSON.parse(savedOrders));
 
+    // Load Shopify credentials
+    const savedShopify = localStorage.getItem('excessive_store_shopify_credentials');
+    if (savedShopify) {
+      try {
+        const { domain, accessToken } = JSON.parse(savedShopify);
+        setShopifyDomain(domain || '');
+        setShopifyAccessToken(accessToken || '');
+      } catch (e) {
+        console.error('Error loading shopify credentials', e);
+      }
+    }
+
     setLoading(false);
   }, []);
 
@@ -135,8 +149,28 @@ export default function AdminPage() {
     try {
       const data = { siteName, updatedAt: new Date().toISOString() };
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data));
+      
+      // Save Shopify credentials
+      if (shopifyDomain && shopifyAccessToken) {
+        let cleanDomain = shopifyDomain.trim()
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '')
+          .split('/')[0];
+        if (!cleanDomain.includes('.')) cleanDomain = `${cleanDomain}.myshopify.com`;
+        
+        localStorage.setItem('excessive_store_shopify_credentials', JSON.stringify({ 
+          domain: cleanDomain, 
+          accessToken: shopifyAccessToken 
+        }));
+      } else if (!shopifyDomain && !shopifyAccessToken) {
+        localStorage.removeItem('excessive_store_shopify_credentials');
+      }
+
       // Dispatch event for Navbar to update
       window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
+      
+      // Optional: Refresh to apply Shopify changes if they were modified
+      // window.location.reload(); 
     } catch (err) {
       setError('Failed to save settings');
     } finally {
@@ -583,7 +617,7 @@ export default function AdminPage() {
                     <p className="text-text-secondary">Global store configurations.</p>
                   </div>
 
-                  <div className="glass-card p-8 space-y-6">
+                  <div className="glass-card p-8 space-y-8">
                     <div className="space-y-4">
                       <label className="block text-sm font-bold uppercase tracking-widest text-text-muted">Store Display Name</label>
                       <input 
@@ -593,8 +627,40 @@ export default function AdminPage() {
                         className="w-full bg-bg-dark border border-white/5 rounded-xl px-4 py-4 focus:outline-none focus:border-brand-orange transition-colors text-xl font-display font-bold"
                       />
                     </div>
+
+                    <div className="pt-8 border-t border-white/5 space-y-6">
+                      <div className="flex items-center gap-3 text-brand-orange">
+                        <ShoppingBag size={20} />
+                        <h3 className="text-lg font-display font-black uppercase italic">Shopify Integration</h3>
+                      </div>
+                      <p className="text-sm text-text-secondary">Connect your Shopify store to sync products and manage inventory. Credentials are stored locally in your browser.</p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase text-text-muted">Shopify Domain / URL</label>
+                          <input 
+                            type="text" 
+                            placeholder="your-store.myshopify.com"
+                            value={shopifyDomain}
+                            onChange={(e) => setShopifyDomain(e.target.value)}
+                            className="w-full bg-bg-dark border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-orange transition-colors font-mono text-sm"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase text-text-muted">Storefront Access Token</label>
+                          <input 
+                            type="password" 
+                            placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
+                            value={shopifyAccessToken}
+                            onChange={(e) => setShopifyAccessToken(e.target.value)}
+                            className="w-full bg-bg-dark border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-brand-orange transition-colors font-mono text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <button onClick={handleSaveSettings} disabled={saving} className="btn-primary w-full py-5 text-lg">
-                      {saving ? 'Saving...' : <><Save size={20} /> Save Changes</>}
+                      {saving ? 'Saving...' : <><Save size={20} /> Save All Settings</>}
                     </button>
                   </div>
                 </motion.div>

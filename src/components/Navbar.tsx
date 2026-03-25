@@ -139,81 +139,95 @@ export default function Navbar() {
       {/* Search Overlay */}
       <AnimatePresence>
         {isSearchOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-bg-dark/95 backdrop-blur-xl flex flex-col"
-          >
-            <div className="max-w-4xl mx-auto w-full px-4 pt-20">
-              <div className="flex justify-between items-center mb-12">
-                <h2 className="text-4xl font-display font-black tracking-tighter uppercase">Search</h2>
-                <button 
-                  onClick={() => setIsSearchOpen(false)}
-                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
-                >
-                  <X size={32} />
-                </button>
-              </div>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSearchOpen(false)}
+              className="absolute inset-0 bg-bg-dark/90 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl bg-surface border border-border-color rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl font-display font-black tracking-tighter uppercase">Search Products</h2>
+                  <button 
+                    onClick={() => setIsSearchOpen(false)}
+                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
 
-              <div className="relative">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" size={24} />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="What are you looking for?"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-surface border-2 border-border-color rounded-2xl py-6 pl-16 pr-6 text-xl focus:border-brand-orange outline-none transition-all"
-                />
-                {isSearching && (
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                    <Loader2 className="animate-spin text-brand-orange" size={24} />
-                  </div>
-                )}
-              </div>
+                <div className="relative">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted" size={24} />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="What are you looking for?"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-bg-dark border-2 border-border-color rounded-2xl py-6 pl-16 pr-6 text-xl focus:border-brand-orange outline-none transition-all"
+                  />
+                  {isSearching && (
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                      <Loader2 className="animate-spin text-brand-orange" size={24} />
+                    </div>
+                  )}
+                </div>
 
-              <div className="mt-12 overflow-y-auto max-h-[60vh] pr-4 custom-scrollbar">
-                {searchResults.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {searchResults.map((product) => (
-                      <Link
-                        key={product.id}
-                        to={`/product/${product.handle}`}
-                        onClick={() => setIsSearchOpen(false)}
-                        className="flex gap-4 p-4 bg-surface/50 hover:bg-surface border border-border-color rounded-xl transition-all group"
-                      >
-                        <div className="w-20 h-20 bg-bg-dark rounded-lg overflow-hidden shrink-0">
-                          <img 
-                            src={product.images?.edges?.[0]?.node?.url || product.image} 
-                            alt={product.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                        <div className="flex flex-col justify-center">
-                          <h3 className="font-bold group-hover:text-brand-orange transition-colors">{product.title}</h3>
-                          <p className="text-brand-orange font-mono text-sm mt-1">
-                            {formatPrice(
-                              product.priceRange?.minVariantPrice?.amount || product.price, 
-                              product.priceRange?.minVariantPrice?.currencyCode || product.currencyCode || 'USD'
-                            )}
-                          </p>
-                        </div>
-                        <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ArrowRight size={20} className="text-brand-orange" />
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : searchQuery.length > 2 && !isSearching ? (
-                  <div className="text-center py-20">
-                    <p className="text-text-secondary text-lg">No products found for "{searchQuery}"</p>
-                  </div>
-                ) : null}
+                <div className="mt-8 overflow-y-auto max-h-[50vh] pr-4 custom-scrollbar">
+                  {searchResults.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {searchResults.map((product) => (
+                        <Link
+                          key={product.id}
+                          to={`/product/${product.handle}`}
+                          onClick={() => setIsSearchOpen(false)}
+                          className="flex gap-4 p-4 bg-bg-dark/50 hover:bg-bg-dark border border-border-color rounded-xl transition-all group"
+                        >
+                          <div className="w-20 h-20 bg-surface rounded-lg overflow-hidden shrink-0">
+                            <img 
+                              src={product.images?.edges?.[0]?.node?.url || product.image} 
+                              alt={product.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-center">
+                            <h3 className="font-bold group-hover:text-brand-orange transition-colors">{product.title}</h3>
+                            <p className="text-brand-orange font-mono text-sm mt-1">
+                              {formatPrice(
+                                product.priceRange?.minVariantPrice?.amount || product.price, 
+                                product.priceRange?.minVariantPrice?.currencyCode || product.currencyCode || 'USD'
+                              )}
+                            </p>
+                          </div>
+                          <div className="ml-auto flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowRight size={20} className="text-brand-orange" />
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : searchQuery.length > 2 && !isSearching ? (
+                    <div className="text-center py-12">
+                      <p className="text-text-secondary text-lg">No products found for "{searchQuery}"</p>
+                    </div>
+                  ) : searchQuery.length <= 2 ? (
+                    <div className="text-center py-12">
+                      <p className="text-text-muted text-sm uppercase font-bold tracking-widest">Type at least 3 characters to search...</p>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </nav>

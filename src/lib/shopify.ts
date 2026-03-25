@@ -1,9 +1,28 @@
-const domain = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || 'mock-store.myshopify.com';
-const storefrontAccessToken = import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN || 'mock-token';
+function getCredentials() {
+  const saved = localStorage.getItem('excessive_store_shopify_credentials');
+  if (saved) {
+    try {
+      const { domain, accessToken } = JSON.parse(saved);
+      if (domain && accessToken) {
+        return { domain, accessToken };
+      }
+    } catch (e) {
+      console.error('Error parsing saved credentials', e);
+    }
+  }
+  return {
+    domain: import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || 'mock-store.myshopify.com',
+    accessToken: import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN || 'mock-token'
+  };
+}
 
 async function shopifyFetch({ query, variables = {} }: { query: string; variables?: any }) {
-  // If no real credentials, return mock data for demo purposes
-  if (!import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || !import.meta.env.VITE_SHOPIFY_STOREFRONT_ACCESS_TOKEN) {
+  const { domain, accessToken } = getCredentials();
+  
+  // If no real credentials and not using mock domain, return mock data
+  const isMock = domain === 'mock-store.myshopify.com' || !accessToken || accessToken === 'mock-token';
+  
+  if (isMock && !import.meta.env.VITE_SHOPIFY_STORE_DOMAIN) {
     return getMockData(query, variables);
   }
 
@@ -14,7 +33,7 @@ async function shopifyFetch({ query, variables = {} }: { query: string; variable
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': storefrontAccessToken,
+        'X-Shopify-Storefront-Access-Token': accessToken,
       },
       body: JSON.stringify({ query, variables }),
     });
